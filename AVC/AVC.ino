@@ -1,11 +1,10 @@
-
+#include <QTRSensors.h>
 /*
    Code for reading raw values from line sensor. 
    Sensor should be about 3 mm away from the surface and 
    not touch it.
    Sensor wires are connected to Arduino pins 2,4,5,6,7,8,9,10
 */
-
 
 // libraries
 #include <QTRSensors.h>
@@ -113,16 +112,16 @@ bool short_range (int pin)
 
 //Long range Sensor
 
-int long_range_sensor [10] = {0,0,0,0,0,0,0,0,0,0};
+int long_range_sensor_data [10] = {0,0,0,0,0,0,0,0,0,0};
 double update_long_range_sensor ( )
 {
   int tmp = analogRead( pin_long );
-  
+  int outavg = 0;
   
   for (int i =0; i < 10; i++)
   {
-    int tmp2 = long_range_sensor[i];
-    long_range_sensor[i] = tmp;
+    int tmp2 = long_range_sensor_data[i];
+    long_range_sensor_data[i] = tmp;
     tmp = tmp2;
     
     outavg += tmp;
@@ -136,7 +135,7 @@ double long_range_sensor ()
   int outavg = 0;
   for (int i =0; i < 10; i++)
   {
-    outavg += long_range_sensor[i];
+    outavg += long_range_sensor_data[i];
   }
   
   return (double)outavg / 10.0;
