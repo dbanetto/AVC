@@ -13,8 +13,8 @@
 // initialize sensor class/variable
 QTRSensorsRC qtr((unsigned char[]) {2,4,5,6,7,8,9,10}, NUM_SENSORS);
 // array to store signals from all 8 sensors
-unsigned int sensorValues[NUM_SENSORS];
-
+unsigned int line_sensor_values[NUM_SENSORS];
+double meanx_hist[5] = { 0.0 ,0.0 ,0.0 ,0.0, 0.0 };
 int pwm_a = 3;  //PWM control for motor outputs 1 and 2 is on digital pin 3
 int pwm_b = 11;  //PWM control for motor outputs 3 and 4 is on digital pin 11
 int dir_a = 12;  //dir control for motor outputs 1 and 2 is on digital pin 12
@@ -46,7 +46,7 @@ void loop()
 {
   int i;
   double wheel_left = 1.0 , wheel_right = 1.0;
-  qtr.read(sensorValues,QTR_EMITTERS_ON);
+  qtr.read(line_sensor_values,QTR_EMITTERS_ON);
   
   double meanx = linesensor();
   
@@ -89,12 +89,47 @@ double linesensor ()
   
   for (int i = 0; i < 8; i++)
   {
-      mean += (double)(4000 - sensorValues[i] ) * (n - offset);
+      mean += (double)(4000 - line_sensor_values[i] ) * (n - offset);
       n++;
-      dt += (double)(4000 - sensorValues[i] );
+      dt += (double)(4000 - line_sensor_values[i] );
   }
   
   return (mean/dt);
+}
+
+bool linesensor_none ()
+{
+	
+  for (int i = 0; i < 8; i++)
+  {
+      if ( (4000 - line_sensor_values[i] ) > 1024 ) // ADJUST ME!
+      	return false;
+  }
+  return true;
+}
+
+
+bool linesensor_left ()
+{
+	
+  for (int i = 0; i < 5; i++)
+  {
+      if ( (4000 - line_sensor_values[i] ) < 2048 ) // ADJUST ME!
+      	return false;
+  }
+  return true;	
+}
+
+
+bool linesensor_right ()
+{
+	
+  for (int i = 4; i < 8; i++)
+  {
+      if ( (4000 - line_sensor_values[i] ) < 2048 ) // ADJUST ME!
+      	return false;
+  }
+  return true;
 }
 
 // Short Range Function
@@ -140,6 +175,18 @@ double long_range_sensor ()
   
   return (double)outavg / 10.0;
   
+}
+
+// Short range Sensors
+
+bool short_left ()
+{
+	return ( analogRead(pin_short_a) < 1024 );
+}
+
+bool short_right ()
+{
+	return ( analogRead(pin_short_b) < 1024 );
 }
 
 // Wheel Functions
