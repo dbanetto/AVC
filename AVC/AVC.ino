@@ -45,7 +45,7 @@ void setup()
   analogWrite(pwm_a, 0);  // set motor voltages 0
   analogWrite(pwm_b, 0);
   
-   Serial.begin(9600);
+  Serial.begin(9600);
 }
 
 void loop()
@@ -53,6 +53,10 @@ void loop()
   double wheel_left = 1.0 , wheel_right = 1.0;
   qtr.read(line_sensor_values,QTR_EMITTERS_OFF);
   
+  Serial.println("Radio Boardcast");
+  boadcastRadio ( "Hello World!" );
+  
+
   double meanx = linesensor();
   //Print Line Position
   
@@ -244,3 +248,67 @@ void wheel_move (double left , double right)
    analogWrite(pwm_b, (int)(96*right));
 }
 
+// Networking 
+
+void boadcastRadio (char transmission [])
+{
+ char frame[34];
+ 
+ int nFrame = 33;
+ unsigned int checkSumTotal = 0;
+ unsigned int crc = 0;
+ 
+ // delimter
+ frame[0] = 0x7e;
+
+ //length
+ frame[1] = 0x00;
+ frame[2] = 0x1e;
+
+ // API ID
+ frame[3] = 0x10;
+ frame[4] = 0x01;
+
+ // destination 64 bit address - broadcast
+ frame[5] = 0x00;
+ frame[6] = 0x13;
+ frame[7] = 0xa2;
+ frame[8] = 0x00;
+ frame[9] = 0x40;
+ frame[10] = 0x6a;
+ frame[11] = 0x40;
+ frame[12] = 0xa4;
+
+ // destination 16 bit address - broadcast
+ frame[13] = 0xff;
+ frame[14] = 0xfe;
+ 
+ // no. of hops
+ frame[15] = 0x00;
+
+ // option
+ frame[16] = 0x01;
+ 
+ // data!
+ for(int i = 17; i<33; i++)
+ {
+   frame[i] = transmission[i-17];
+ }
+
+ // check sum
+ for(int i = 3; i<nFrame; i++)
+ {
+   checkSumTotal += frame[i];
+ }
+
+ checkSumTotal = checkSumTotal & 0xff;
+ crc = 0xff - checkSumTotal;
+ frame[nFrame] = crc;
+ 
+ nFrame++;
+
+ for(int i=0; i<nFrame; i++)
+ {
+   Serial.write(frame[i]);
+ }
+}
