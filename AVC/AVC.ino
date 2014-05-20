@@ -46,17 +46,21 @@ void setup()
   analogWrite(pwm_b, 0);
   
   Serial.begin(9600);
+
+  boadcastRadio( "QUAD 1" );
 }
+
+double last_meanx = 0;
+bool TURN_DECTED = false;
+int TURN_SIDE = 0;
+#define TURN_RIGHT -1
+#define TURN_LEFT 1
 
 void loop()
 {
   double wheel_left = 1.0 , wheel_right = 1.0;
   qtr.read(line_sensor_values,QTR_EMITTERS_OFF);
   
-  Serial.println("Radio Boardcast");
-  boadcastRadio ( "Hello World!" );
-  
-
   double meanx = linesensor();
   //Print Line Position
   
@@ -65,37 +69,52 @@ void loop()
   
   line_wheel( &wheel_left , &wheel_right , meanx );
   
-  /*
-  Serial.print ( short_range(pin_short_a) ) ;
-  Serial.print ( " , " ) ;
-  Serial.println ( short_range(pin_short_b) ) ;
-  
-  
-  Serial.print ( "None : " ) ;
-  Serial.println ( linesensor_none() ) ;
-  Serial.print ( "LR : " ) ;
-  Serial.print ( linesensor_left() ) ;
-  Serial.print ( " , " ) ;
-  Serial.println ( linesensor_right() ) ;
-  
-
-  for (int i = 0; i < 8; i++ ) {
-    Serial.print ( line_sensor_values[i] ) ;
-    Serial.print ( " , " ) ;
+  if (linesensor_right())
+  {
+    wheel_left = 1.0;
+    wheel_right = -1.0;
+    boadcastRadio( "QUAD 2" );
+    TURN_DECTED = true;
+    TURN_SIDE = TURN_RIGHT;
+  } else if ( linesensor_none() )
+  {
+    
+    wheel_left = 1.0;
+    wheel_right = 1.0;
+    if (last_meanx > 0)
+    {
+      wheel_right *= -1;
+    } else if (last_meanx < 0)
+    {
+     wheel_left *= -1; 
+    }
+    boadcastRadio( "NONE!" );
+  } else 
+  {
+    last_meanx = meanx;
   }
-  Serial.println ( "" ) ;
-  //Set the Power to the wheels
-  
-  //Print Wheel Info
-  
-  Serial.print(wheel_left );
-  Serial.print(" , ");
-  Serial.print(wheel_right);
-  Serial.println(" ");
-  */
-  
-  //wheel_move(wheel_left , wheel_right);
-  wheel_move(0 , 0);
+
+  if (TURN_DECTED)
+  {
+    if (TURN_SIDE == TURN_RIGHT)
+    {
+      if (meanx > -1.0 && meanx < -1.0)
+      {
+        TURN_SIDE = 0;
+        TURN_DECTED = false;  
+      } else {
+            wheel_left = 1.0;
+            wheel_right = -1.0;
+      }
+    } else {
+      TURN_SIDE = 0;
+      TURN_DECTED = false;
+    }
+
+  }
+
+  wheel_move(wheel_left , wheel_right);
+  //wheel_move(0 , 0);
   
   delay(100);
 }
@@ -144,7 +163,7 @@ bool linesensor_right ()
 bool linesensor_left ()
 {
 	
-  for (int i = 4; i < 8; i++)
+  for (int i = 3; i < 8; i++)
   {
       if ( (4000 - line_sensor_values[i] ) < 2048 ) // ADJUST ME!
       	return false;
@@ -312,3 +331,29 @@ void boadcastRadio (char transmission [])
    Serial.write(frame[i]);
  }
 }
+
+
+void print_debug ()
+{
+  
+  Serial.print ( short_range(pin_short_a) ) ;
+  Serial.print ( " , " ) ;
+  Serial.println ( short_range(pin_short_b) ) ;
+  
+  
+  Serial.print ( "None : " ) ;
+  Serial.println ( linesensor_none() ) ;
+  Serial.print ( "LR : " ) ;
+  Serial.print ( linesensor_left() ) ;
+  Serial.print ( " , " ) ;
+  Serial.println ( linesensor_right() ) ;
+  
+
+  for (int i = 0; i < 8; i++ ) {
+    Serial.print ( line_sensor_values[i] ) ;
+    Serial.print ( " , " ) ;
+  }
+  Serial.println ( ""  );
+  
+}
+
