@@ -1,4 +1,3 @@
-#include <QTRSensors.h>
 /*
    Code for reading raw values from line sensor. 
    Sensor should be about 3 mm away from the surface and 
@@ -14,8 +13,8 @@
 QTRSensorsRC qtr((unsigned char[]) {2,4,5,6,7,8,9,10}, NUM_SENSORS);
 // array to store signals from all 8 sensors
 unsigned int line_sensor_values[NUM_SENSORS];
-double meanx_hist[5] = { 0.0 ,0.0 ,0.0 ,0.0, 0.0 };
-int pwm_a = 3;  //PWM control for motor outputs 1 and 2 is on digital pin 3
+
+int pwm_a = 3;   //PWM control for motor outputs 1 and 2 is on digital pin 3
 int pwm_b = 11;  //PWM control for motor outputs 3 and 4 is on digital pin 11
 int dir_a = 12;  //dir control for motor outputs 1 and 2 is on digital pin 12
 int dir_b = 13;  //dir control for motor outputs 3 and 4 is on digital pin 13
@@ -36,6 +35,13 @@ void setup()
   pinMode(pin_short_b,INPUT);
   pinMode(pin_long,INPUT);
   
+  //Set all sensor pins to INPUT
+  pinMode( 2, INPUT);
+  for (int i = 4; i < 11; i++)
+  {
+    pinMode( i, INPUT);   
+  }
+
   analogWrite(pwm_a, 0);  // set motor voltages 0
   analogWrite(pwm_b, 0);
   
@@ -44,39 +50,49 @@ void setup()
 
 void loop()
 {
-  int i;
   double wheel_left = 1.0 , wheel_right = 1.0;
-  qtr.read(line_sensor_values,QTR_EMITTERS_ON);
+  qtr.read(line_sensor_values,QTR_EMITTERS_OFF);
   
   double meanx = linesensor();
-  
   //Print Line Position
-  /*
+  
   Serial.print(meanx);
   Serial.println(" ");
-  */
+  
   line_wheel( &wheel_left , &wheel_right , meanx );
   
-  //Serial.println (short_range(pin_short_a));
-  //Serial.println (short_range(pin_short_b));
-  
-  /* 
+  /*
   Serial.print ( short_range(pin_short_a) ) ;
   Serial.print ( " , " ) ;
   Serial.println ( short_range(pin_short_b) ) ;
-  */
   
+  
+  Serial.print ( "None : " ) ;
+  Serial.println ( linesensor_none() ) ;
+  Serial.print ( "LR : " ) ;
+  Serial.print ( linesensor_left() ) ;
+  Serial.print ( " , " ) ;
+  Serial.println ( linesensor_right() ) ;
+  
+
+  for (int i = 0; i < 8; i++ ) {
+    Serial.print ( line_sensor_values[i] ) ;
+    Serial.print ( " , " ) ;
+  }
+  Serial.println ( "" ) ;
   //Set the Power to the wheels
   
   //Print Wheel Info
-  /*
+  
   Serial.print(wheel_left );
   Serial.print(" , ");
   Serial.print(wheel_right);
   Serial.println(" ");
   */
   
-  wheel_move(wheel_left , wheel_right);
+  //wheel_move(wheel_left , wheel_right);
+  wheel_move(0 , 0);
+  
   delay(100);
 }
 
@@ -109,7 +125,7 @@ bool linesensor_none ()
 }
 
 
-bool linesensor_left ()
+bool linesensor_right ()
 {
 	
   for (int i = 0; i < 5; i++)
@@ -121,7 +137,7 @@ bool linesensor_left ()
 }
 
 
-bool linesensor_right ()
+bool linesensor_left ()
 {
 	
   for (int i = 4; i < 8; i++)
@@ -190,18 +206,17 @@ bool short_right ()
 }
 
 // Wheel Functions
-
+double TURN_OFF_SET = 2.0;
 void line_wheel (double* left, double* right , double meanx )
 {
-  
    if (meanx < 0)
    {
      //Left
-     *left =  (meanx + offset) / offset;
+     *left =  (meanx + TURN_OFF_SET) / TURN_OFF_SET;
    } else if (meanx > 0)
    {
      //right
-     *right = (meanx - offset) / -offset;
+     *right = (meanx - TURN_OFF_SET) / -TURN_OFF_SET;
    }
     
 }
@@ -210,8 +225,22 @@ void line_wheel (double* left, double* right , double meanx )
 
 void wheel_move (double left , double right)
 {
-   digitalWrite(dir_a, HIGH);   // select motor direction
-   digitalWrite(dir_b, HIGH);   
-   analogWrite(pwm_a, (int)(255*left) );     // set motor voltage to max
-   analogWrite(pwm_b, (int)(255*right));
+  if (left < 0)
+  {
+    digitalWrite(dir_a , LOW);
+    left *= -1.5;
+  } else {
+    digitalWrite(dir_a , HIGH);
+  }
+  if (right < 0)
+  {
+  digitalWrite(dir_b , LOW);
+    right *= -1.5;
+  } else {
+    digitalWrite(dir_b , HIGH);
+  }
+  
+   analogWrite(pwm_a, (int)(96*left) );     // set motor voltage to max
+   analogWrite(pwm_b, (int)(96*right));
 }
+
