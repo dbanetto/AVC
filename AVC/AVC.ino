@@ -14,6 +14,8 @@ QTRSensorsRC qtr((unsigned char[]) {2,4,5,6,7,8,9,10}, NUM_SENSORS);
 // array to store signals from all 8 sensors
 unsigned int line_sensor_values[NUM_SENSORS];
 
+int current_quad = 0;
+
 int pwm_a = 3;   //PWM control for motor outputs 1 and 2 is on digital pin 3
 int pwm_b = 11;  //PWM control for motor outputs 3 and 4 is on digital pin 11
 int dir_a = 12;  //dir control for motor outputs 1 and 2 is on digital pin 12
@@ -24,8 +26,8 @@ int pin_short_b = A1;
 int pin_long = A5;
 
 int SPEED = 108; // out of 255
-// ~127 for the real course
-// ~150 for secondary course w/ full bat 
+// ~110 for the real course
+// ~140 for secondary course w/ full bat 
 
 void setup()
 {
@@ -48,9 +50,11 @@ void setup()
   analogWrite(pwm_a, 0);  // set motor voltages 0
   analogWrite(pwm_b, 0);
   
+
   Serial.begin(9600);
-  boadcastRadio( "QUAD 1" );
-  delay ( 1000 );
+  
+  //Wait for radio to connect
+  delay ( 10000 );
 }
 
 double last_meanx = 0;
@@ -62,6 +66,8 @@ bool TURN_PARTIAL = false;
 
 void loop()
 {
+  boardcastQuad(1); 
+
   double wheel_left = 1.0 , wheel_right = 1.0;
   qtr.read(line_sensor_values,QTR_EMITTERS_OFF);
   update_long_range_sensor();
@@ -74,7 +80,7 @@ void loop()
   {
     wheel_left = -1.0;
     wheel_right = 1.0;
-    boadcastRadio( "QUAD 2" );
+    boardcastQuad(2);
     TURN_DECTED = true;
     TURN_SIDE = TURN_LEFT;
     TURN_PARTIAL = false;
@@ -89,7 +95,6 @@ void loop()
     {
      wheel_left *= -1; 
     }
-    boadcastRadio( "NONE!" );
   } else if (!TURN_DECTED)
   {
     last_meanx = meanx;
@@ -100,7 +105,6 @@ void loop()
     TURN_DECTED = true;
     TURN_SIDE = TURN_RIGHT;
     TURN_PARTIAL = false;
-    boadcastRadio( "RIGHT!" );
   }
 
   if ( short_left() && linesensor_none() && !TURN_DECTED)
@@ -123,10 +127,16 @@ void loop()
     TURN_PARTIAL = false;
   }
 
-    if ( long_range_sensor() > 350 )
+  if (short_left() && short_right())
   {
-    TURN_SIDE = TURN_LEFT;
-    wheel_left = -1.0;
+    boardcastQuad(4);
+  }
+
+  if ( long_range_sensor() > 350 )
+  {
+    TURN_SIDE = TURN_RIGHT;
+    wheel_left = 1.0;
+    wheel_right = -1.0;
     TURN_DECTED = true;
     TURN_PARTIAL = false;
   }
@@ -134,17 +144,10 @@ void loop()
   if ( linesensor_right() && long_range_sensor() > 350 )
   {
     
-    TURN_SIDE = TURN_RIGHT;
-    //LOGIC!
-    if (long_range_sensor() > 350)
-    {
-      TURN_SIDE = TURN_LEFT;
+      TURN_SIDE = TURN_RIGHT;
       wheel_left = -1.0;
       wheel_right = 1.0;
-      boadcastRadio( "QUAD 3" );
-      SPEED = 96;
-    }
-
+      boardcastQuad(3);
   }
 
 
@@ -153,7 +156,6 @@ void loop()
   {
     if (TURN_SIDE == TURN_RIGHT)
     {
-      boadcastRadio( "RIGHT" );
       if (meanx > -1 && meanx < 1 && TURN_PARTIAL)
       {
         TURN_SIDE = 0;
@@ -166,7 +168,6 @@ void loop()
       wheel_right = -1.0;
     } else if ( TURN_SIDE == TURN_LEFT )
     {
-      boadcastRadio( "LEFT" );
       if (meanx > -1 && meanx < 1)
       {
         TURN_SIDE = 0;
@@ -185,8 +186,7 @@ void loop()
   }
 
   wheel_move(wheel_left , wheel_right);
-
-  delay (10);
+  delay (10); //delay should be good hz for speed and sensor refresh rate 
 }
 
 double offset = 3.5;
@@ -360,7 +360,7 @@ void wheel_move (double left , double right)
 
 // Networking (PACKET MAGIC)
 // Thank you Aurther for giving us sample code to do this
-void boadcastRadio (char transmission [])
+void boardcastToRadio (char transmission [])
 {
  char packet[34];
  
@@ -423,6 +423,8 @@ void boadcastRadio (char transmission [])
  {
    Serial.write(packet[i]);
  }
+ Serial.flush();
+ Serial.println ( "" );
 }
 
 
@@ -450,8 +452,21 @@ void print_debug ()
     Serial.print ( line_sensor_values[i] ) ;
     Serial.print ( " , " ) ;
   }
-  Serial.println ( ""  );
+  Serial.println ( "" );
   
 }
 
-
+void boardcastQuad (int quad)
+{
+  if (quad < current_quad)
+    return;
+  if (quad == 1)
+    boardcastToRadio("QUAD1           "); //Extra whitespace to prevent reading neighbours memory
+  else if (quad == 2)
+    boardcastToRadio("QUAD2           ");
+  else if (quad == 3)
+    boardcastToRadio("QUAD3           ");
+  else if (quad == 4)
+    boardcastToRadio("QUAD4           ");
+  current_quad = quad;
+}
